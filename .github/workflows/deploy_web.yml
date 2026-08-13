@@ -1,0 +1,39 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main # Triggers when you push to the main branch
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Important: allows the action to push to the gh-pages branch
+
+    steps:
+      # Step 1: Download your code onto the GitHub server
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Install Flutter on the GitHub Server
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      # Step 3: Install dependencies
+      - name: Install Dependencies
+        run: flutter pub get
+
+      # Step 4: Build the Web App
+      # The base-href dynamic variable tells Flutter to properly root the website path to whatever you name your repository
+      - name: Build Web App
+        run: flutter build web --base-href "/${{ github.event.repository.name }}/"
+
+      # Step 5: Automatically deploy the build/web folder to a branch called "gh-pages"
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build/web
