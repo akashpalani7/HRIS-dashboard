@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_user.dart';
 import '../services/app_state.dart';
 import '../services/mock_api_service.dart';
 import 'home_screen.dart';
-import '../widgets/app_card.dart';
-import '../widgets/app_button.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,83 +15,143 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _loading = false;
-  String _statusMessage = '';
 
   Future<void> _loginAsMock(BuildContext context, String role) async {
     setState(() {
       _loading = true;
-      _statusMessage = 'Populating automated $role credentials...';
     });
     
-    // Simulate typing/filling credentials securely
     await Future.delayed(const Duration(milliseconds: 700));
-    
     if(!mounted) return;
-    setState(() => _statusMessage = 'Authenticating connection...');
-    await Future.delayed(const Duration(milliseconds: 800));
     
-    if (!context.mounted) return;
-
     final mockApi = MockApiService();
     final user = mockApi.userForRole(role);
-    context.read<AppState>().login(user);
-    _navigateToDashboard(context, user);
+    
+    final prefs = await SharedPreferences.getInstance();
+    final bool useSaved = prefs.getBool('save_creds') ?? false;
+    
+    AppUser finalUser = user;
+    if (useSaved) {
+      final savedId = prefs.getString('saved_id') ?? '';
+      if (savedId.isNotEmpty) {
+        finalUser = AppUser(
+          id: user.id,
+          name: savedId, 
+          email: user.email,
+          role: user.role,
+          department: user.department,
+        );
+      }
+    }
+
+    context.read<AppState>().login(finalUser);
+    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
   }
 
-  void _navigateToDashboard(BuildContext context, AppUser user) {
-    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
+  void _showSettingsDialog() async {
+    final prefs = await SharedPreferences.getInstance();
+    bool saveCreds = prefs.getBool('save_creds') ?? false;
+    final idController = TextEditingController(text: prefs.getString('saved_id') ?? '');
+    final passController = TextEditingController(text: prefs.getString('saved_pass') ?? '');
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setStateBuilder) {
+            return AlertDialog(
+              title: const Text('Settings'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SwitchListTile(
+                    title: const Text('Enable Custom Login'),
+                    value: saveCreds,
+                    onChanged: (val) {
+                      setStateBuilder(() => saveCreds = val);
+                    },
+                  ),
+                  if (saveCreds) ...[
+                    TextField(controller: idController, decoration: const InputDecoration(labelText: 'Login ID')),
+                    TextField(controller: passController, decoration: const InputDecoration(labelText: 'Password'), obscureText: true),
+                  ]
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                TextButton(
+                  onPressed: () async {
+                    await prefs.setBool('save_creds', saveCreds);
+                    await prefs.setString('saved_id', idController.text);
+                    await prefs.setString('saved_pass', passController.text);
+                    if (mounted) Navigator.pop(ctx);
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          }
+        );
+      }
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Nexus HRIS Login'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: _showSettingsDialog,
+          )
+        ],
+      ),
       body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: _loading 
-              ? Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CircularProgressIndicator(color: Color(0xFF5A72A0)),
-                    const SizedBox(height: 24),
-                    Text(_statusMessage, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF5A72A0))),
-                  ],
-                )
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const AppCard(
-                      padding: EdgeInsets.all(24),
-                      borderRadius: 100,
-                      child: Icon(Icons.blur_on, size: 56, color: Color(0xFF5A72A0)),
-                    ),
-                    const SizedBox(height: 24),
-                    const Text('NEXUS HRIS', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFF5A72A0), letterSpacing: 2)),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Select a portal access level to continue. The system will securely auto-fill credentials for this demo.',
-                      style: TextStyle(color: Colors.grey),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 32),
-                    AppButton(
-                      onPressed: () => _loginAsMock(context, 'hr'),
-                      child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.admin_panel_settings, color: Color(0xFF5A72A0)), SizedBox(width: 8), Text('HR Portal', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))]),
-                    ),
-                    const SizedBox(height: 16),
-                    AppButton(
-                      onPressed: () => _loginAsMock(context, 'manager'),
-                      child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.groups, color: Color(0xFF5A72A0)), SizedBox(width: 8), Text('Manager Portal', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))]),
-                    ),
-                    const SizedBox(height: 16),
-                    AppButton(
-                      onPressed: () => _loginAsMock(context, 'employee'),
-                      child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.person, color: Color(0xFF5A72A0)), SizedBox(width: 8), Text('Employee Portal', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))]),
-                    ),
-                  ],
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.business, size: 80, color: Colors.blueGrey),
+              const SizedBox(height: 20),
+              const Text('Welcome to HRIS', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 10),
+              const Text('Please select your portal.', style: TextStyle(color: Colors.grey)),
+              const SizedBox(height: 30),
+              if (_loading) 
+                const CircularProgressIndicator()
+              else ...[
+                SizedBox(
+                  width: 250,
+                  height: 45,
+                  child: ElevatedButton(
+                    onPressed: () => _loginAsMock(context, 'hr'),
+                    child: const Text('HR Portal'),
+                  ),
                 ),
+                const SizedBox(height: 15),
+                SizedBox(
+                  width: 250,
+                  height: 45,
+                  child: ElevatedButton(
+                    onPressed: () => _loginAsMock(context, 'manager'),
+                    child: const Text('Manager Portal'),
+                  ),
+                ),
+                const SizedBox(height: 15),
+                SizedBox(
+                  width: 250,
+                  height: 45,
+                  child: ElevatedButton(
+                    onPressed: () => _loginAsMock(context, 'employee'),
+                    child: const Text('Employee Portal'),
+                  ),
+                ),
+              ]
+            ],
           ),
         ),
       ),

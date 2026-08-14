@@ -17,14 +17,8 @@ class AppCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 1,
-      color: baseColor ?? Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(borderRadius),
-        side: BorderSide(color: Colors.grey.shade200, width: 1),
-      ),
       child: Padding(
-        padding: padding ?? const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(8.0),
         child: child,
       ),
     );

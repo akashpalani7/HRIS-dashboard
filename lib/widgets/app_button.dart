@@ -20,14 +20,10 @@ class AppButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return ElevatedButton(
       onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: baseColor ?? Colors.grey.shade50,
-        foregroundColor: Colors.blueGrey.shade900,
-        padding: padding ?? const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(borderRadius)),
-        elevation: 1,
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: child,
       ),
-      child: child,
     );
   }
 }

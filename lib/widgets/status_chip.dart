@@ -6,25 +6,9 @@ class StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color color;
-    switch (status) {
-      case 'approved':
-        color = Colors.green;
-        break;
-      case 'rejected':
-        color = Colors.red;
-        break;
-      default:
-        color = Colors.orange;
-    }
-    return Chip(
-      label: Text(
-        status.toUpperCase(),
-        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-      ),
-      backgroundColor: color,
-      padding: EdgeInsets.zero,
-      visualDensity: VisualDensity.compact,
+    return Text(
+      '[$status]',
+      style: const TextStyle(fontWeight: FontWeight.normal),
     );
   }
 }
